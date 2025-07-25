@@ -1,8 +1,11 @@
 pipeline {
+      
     agent any
 
     environment {
-        DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')  // From Jenkins Credentials
+        DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')         // From Jenkins Credentials
+        DOCKER_CREDENTIALS_ID = 'docker-hub-creds'               // Jenkins credential ID
+        DOCKER_HUB_REPO = '7995360438/jenkins-demo'              // Docker Hub username/repo
     }
 
     stages {
