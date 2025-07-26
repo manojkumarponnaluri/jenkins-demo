@@ -1,5 +1,7 @@
+@Library('shared-lib') _              // ✅ Load the Shared Library
+import org.example.Utils              // ✅ Import class from shared library
+
 pipeline {
-      
     agent any
 
     environment {
@@ -9,26 +11,43 @@ pipeline {
     }
 
     stages {
+        stage('Greet from Shared Lib') {
+            steps {
+                greet('Manoj')   // 👋 Comes from vars/greet.groovy
+            }
+        }
+
+        stage('Shout Message from Shared Lib') {
+            steps {
+                script {
+                    def msg = Utils.shout('this is from shared lib')   // 📣 src/org/example/Utils.groovy
+                    echo msg
+                }
+            }
+        }
+
         stage('Greet') {
             steps {
-                echo '👋 Hello from Jenkins! This is my first Jenkins Pipeline.'
+                echo ' ~K Hello from Jenkins! Let’s build and push Docker image.'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    echo '🐳 Building Docker image...'
-                    dockerImage = docker.build("my-image:latest")
+                    echo ' M-3 Building Docker image...'
+                    dockerImage = docker.build("${DOCKER_HUB_REPO}:latest")
                 }
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Push to Docker Hub') {
             steps {
                 script {
-                    echo '🚀 Running Docker container...'
-                    dockerImage.run()
+                    echo ' ~@ Pushing image to Docker Hub...'
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
+                        dockerImage.push("latest")
+                    }
                 }
             }
         }
@@ -44,7 +63,7 @@ pipeline {
             script {
                 sh """
                 curl -H "Content-Type: application/json" \\
-                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER}"}' \\
+                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER} pushed to Docker Hub."}' \\
                 $DISCORD_WEBHOOK
                 """
             }
