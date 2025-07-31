@@ -55,7 +55,10 @@ pipeline {
                     // ✅ Push to Harbor only if job is 'harbor-demo'
                     if (env.JOB_NAME == 'harbor-demo') {
                         echo ' 📦 Also pushing image to Harbor...'
-                        dockerImage.tag("${HARBOR_REPO}:latest")
+                        
+                        // ✅ FIXED this line: correct docker tag format
+                        dockerImage.tag("${HARBOR_REPO}", "latest")
+                        
                         docker.withRegistry("http://172.30.238.202:8080", HARBOR_CREDENTIALS_ID) {
                             docker.image("${HARBOR_REPO}:latest").push()
                         }
