@@ -43,34 +43,40 @@ pipeline {
             }
         }
 
-        // ✅ MODIFIED: Push to Docker Hub + Harbor (only if harbor-demo job)
-        stage('Push to Docker Hub and Harbor') {
+        stage('Push to Docker Hub') {
             steps {
                 script {
                     echo ' ~@ Pushing image to Docker Hub...'
                     docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
                         dockerImage.push("latest")
                     }
+                }
+            }
+        }
 
-                    // ✅ Push to Harbor only if job is 'harbor-demo'
-                    if (env.JOB_NAME == 'harbor-demo') {
-                        echo ' 📦 Also pushing image to Harbor...'
-                        
-                        // ✅ FIXED this line: correct docker tag format
-                        sh "docker tag ${DOCKER_HUB_REPO}:latest ${HARBOR_REPO}:latest"
+        // ✅ New stage added below existing logic — pushes to Harbor
+        stage('Push to Harbor') {
+            when {
+                expression { env.JOB_NAME == 'harbor-demo' }  // ✅ Only for 'harbor-demo' job
+            }
+            steps {
+                script {
+                    echo ' 📦 Pushing image to Harbor...'
 
-                     
-                        docker.withRegistry("http://172.30.238.202:8080", HARBOR_CREDENTIALS_ID) {
-                            docker.image("${HARBOR_REPO}:latest").push()
-                        }
-                        sh """
-                        curl -H "Content-Type: application/json" \\
-                        -X POST -d '{"content": "✅ Image pushed to *Harbor* by job harbor-demo."}' \\
-                        $DISCORD_WEBHOOK
-                        """
-                    } else {
-                        echo " 🚫 Skipping Harbor push. This is not the harbor-demo job."
+                    // Tag image for Harbor
+                    sh "docker tag ${DOCKER_HUB_REPO}:latest ${HARBOR_REPO}:latest"
+
+                    // Push image to Harbor
+                    docker.withRegistry("http://172.30.238.202:8080", HARBOR_CREDENTIALS_ID) {
+                        docker.image("${HARBOR_REPO}:latest").push()
                     }
+
+                    // Notify on Discord
+                    sh """
+                    curl -H "Content-Type: application/json" \\
+                    -X POST -d '{"content": "✅ Image pushed to *Harbor* by job harbor-demo."}' \\
+                    $DISCORD_WEBHOOK
+                    """
                 }
             }
         }
@@ -108,4 +114,3 @@ pipeline {
         }
     }
 }
-
