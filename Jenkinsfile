@@ -8,7 +8,7 @@ pipeline {
         DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')         // From Jenkins Credentials
         DOCKER_CREDENTIALS_ID = 'docker-hub-creds'               // Jenkins credential ID
         DOCKER_HUB_REPO = '7995360438/jenkins-demo'              // Docker Hub username/repo
-        HARBOR_REPO = '172.30.238.202:8080/jenkins-demo/jenkins-demo' // ✅ Harbor image path
+        HARBOR_IMAGE = '172.30.238.202:8080/jenkins-demo/busybox:latest' // ✅ Harbor image path
         HARBOR_CREDENTIALS_ID = 'harbor-creds'                   // ✅ Harbor Jenkins credentials ID
     }
 
