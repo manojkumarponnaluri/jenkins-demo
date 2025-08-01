@@ -8,7 +8,7 @@ pipeline {
         DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')         // From Jenkins Credentials
         DOCKER_CREDENTIALS_ID = 'docker-hub-creds'               // Jenkins credential ID
         DOCKER_HUB_REPO = '7995360438/jenkins-demo'              // Docker Hub username/repo
-        HARBOR_IMAGE = '172.30.238.202:8080/jenkins-demo/busybox:latest' // ✅ Harbor image path
+        HARBOR_REPO = '172.30.238.202:8080/jenkins-demo/jenkins-demo' // ✅ Harbor image path
         HARBOR_CREDENTIALS_ID = 'harbor-creds'                   // ✅ Harbor Jenkins credentials ID
     }
 
@@ -43,40 +43,34 @@ pipeline {
             }
         }
 
-        stage('Push to Docker Hub') {
+        // ✅ Push to Docker Hub + Harbor (only if harbor-demo job)
+        stage('Push to Docker Hub and Harbor') {
             steps {
                 script {
                     echo ' ~@ Pushing image to Docker Hub...'
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
+                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS_ID) {
                         dockerImage.push("latest")
                     }
-                }
-            }
-        }
 
-        // ✅ New stage added below existing logic — pushes to Harbor
-        stage('Push to Harbor') {
-            when {
-                expression { env.JOB_NAME == 'harbor-demo' }  // ✅ Only for 'harbor-demo' job
-            }
-            steps {
-                script {
-                    echo ' 📦 Pushing image to Harbor...'
+                    if (env.JOB_NAME == 'harbor-demo') {
+                        echo ' 📦 Also pushing image to Harbor...'
 
-                    // Tag image for Harbor
-                    sh "docker tag ${DOCKER_HUB_REPO}:latest ${HARBOR_REPO}:latest"
+                        // ✅ Properly reference environment variables inside script block
+                        sh "docker tag ${env.DOCKER_HUB_REPO}:latest ${env.HARBOR_REPO}:latest"
 
-                    // Push image to Harbor
-                    docker.withRegistry("http://172.30.238.202:8080", HARBOR_CREDENTIALS_ID) {
-                        docker.image("${HARBOR_REPO}:latest").push()
+                        def harborHost = env.HARBOR_REPO.split('/')[0]
+                        docker.withRegistry("http://${harborHost}", env.HARBOR_CREDENTIALS_ID) {
+                            docker.image("${env.HARBOR_REPO}:latest").push()
+                        }
+
+                        sh """
+                        curl -H "Content-Type: application/json" \\
+                        -X POST -d '{"content": "✅ Image pushed to *Harbor* by job harbor-demo."}' \\
+                        $DISCORD_WEBHOOK
+                        """
+                    } else {
+                        echo " 🚫 Skipping Harbor push. This is not the harbor-demo job."
                     }
-
-                    // Notify on Discord
-                    sh """
-                    curl -H "Content-Type: application/json" \\
-                    -X POST -d '{"content": "✅ Image pushed to *Harbor* by job harbor-demo."}' \\
-                    $DISCORD_WEBHOOK
-                    """
                 }
             }
         }
