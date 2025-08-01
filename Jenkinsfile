@@ -1,28 +1,26 @@
-@Library('shared-lib') _
-import org.example.Utils
+@Library('shared-lib') _              // ✅ Load the Shared Library
+import org.example.Utils              // ✅ Import class from shared library
 
 pipeline {
     agent any
 
     environment {
-        DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')
-        DOCKER_CREDENTIALS_ID = 'docker-hub-creds'
-        DOCKER_HUB_REPO = '7995360438/jenkins-demo'
-        HARBOR_REPO = '192.168.0.2:8080/jenkins-demo/jenkins-demo'   // ✅ Updated IP
-        HARBOR_CREDENTIALS_ID = 'harbor-creds'
+        DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')         // From Jenkins Credentials
+        DOCKER_CREDENTIALS_ID = 'docker-hub-creds'               // Jenkins credential ID
+        DOCKER_HUB_REPO = '7995360438/jenkins-demo'              // Docker Hub username/repo
     }
 
     stages {
         stage('Greet from Shared Lib') {
             steps {
-                greet('Manoj')
+                greet('Manoj')   // 👋 Comes from vars/greet.groovy
             }
         }
 
         stage('Shout Message from Shared Lib') {
             steps {
                 script {
-                    def msg = Utils.shout('this is from shared lib')
+                    def msg = Utils.shout('this is from shared lib')   // 📣 src/org/example/Utils.groovy
                     echo msg
                 }
             }
@@ -43,31 +41,12 @@ pipeline {
             }
         }
 
-        stage('Push to Docker Hub and Harbor') {
+        stage('Push to Docker Hub') {
             steps {
                 script {
                     echo ' ~@ Pushing image to Docker Hub...'
-                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS_ID) {
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
                         dockerImage.push("latest")
-                    }
-
-                    if (env.JOB_NAME == 'harbor-demo') {
-                        echo ' 📦 Also pushing image to Harbor...'
-
-                        def harborHost = env.HARBOR_REPO.split('/')[0]
-                        sh "docker tag ${env.DOCKER_HUB_REPO}:latest ${env.HARBOR_REPO}:latest"
-
-                        docker.withRegistry("http://${harborHost}", env.HARBOR_CREDENTIALS_ID) {
-                            docker.image("${env.HARBOR_REPO}:latest").push()
-                        }
-
-                        sh """
-                        curl -H "Content-Type: application/json" \\
-                        -X POST -d '{"content": "✅ Image pushed to *Harbor* by job harbor-demo."}' \\
-                        "$DISCORD_WEBHOOK"
-                        """
-                    } else {
-                        echo " 🚫 Skipping Harbor push. This is not the harbor-demo job."
                     }
                 }
             }
@@ -84,8 +63,8 @@ pipeline {
             script {
                 sh """
                 curl -H "Content-Type: application/json" \\
-                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER} pushed to Docker Hub${env.JOB_NAME == 'harbor-demo' ? ' and Harbor' : ''}."}' \\
-                "$DISCORD_WEBHOOK"
+                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER} pushed to Docker Hub."}' \\
+                $DISCORD_WEBHOOK
                 """
             }
         }
@@ -100,9 +79,9 @@ pipeline {
                 sh """
                 curl -H "Content-Type: application/json" \\
                 -X POST -d '{"content": "❌ Jenkins Job *FAILED*: ${env.JOB_NAME} #${env.BUILD_NUMBER}"}' \\
-                "$DISCORD_WEBHOOK"
+                $DISCORD_WEBHOOK
                 """
             }
         }
     }
-}
+}   
