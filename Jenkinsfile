@@ -1,26 +1,34 @@
-@Library('shared-lib') _              // ✅ Load the Shared Library
-import org.example.Utils              // ✅ Import class from shared library
+@Library('shared-lib') _
+import org.example.Utils
 
 pipeline {
     agent any
 
     environment {
-        DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')         // From Jenkins Credentials
-        DOCKER_CREDENTIALS_ID = 'docker-hub-creds'               // Jenkins credential ID
-        DOCKER_HUB_REPO = '7995360438/jenkins-demo'              // Docker Hub username/repo
+        // 🌐 Docker Hub
+        DOCKER_CREDENTIALS_ID = 'docker-hub-creds'
+        DOCKER_HUB_REPO = '7995360438/jenkins-demo'
+
+        // 🌐 Harbor Registry
+        HARBOR_REGISTRY = '192.168.0.12:8080'
+        HARBOR_IMAGE = "${HARBOR_REGISTRY}/library/jenkins-demo"
+        HARBOR_CREDENTIALS_ID = 'harbor-creds'
+
+        // 🔔 Notifications
+        DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')
     }
 
     stages {
         stage('Greet from Shared Lib') {
             steps {
-                greet('Manoj')   // 👋 Comes from vars/greet.groovy
+                greet('Manoj')
             }
         }
 
         stage('Shout Message from Shared Lib') {
             steps {
                 script {
-                    def msg = Utils.shout('this is from shared lib')   // 📣 src/org/example/Utils.groovy
+                    def msg = Utils.shout('this is from shared lib')
                     echo msg
                 }
             }
@@ -51,6 +59,30 @@ pipeline {
                 }
             }
         }
+
+        stage('Tag Image for Harbor') {
+            steps {
+                script {
+                    echo '🏷️ Tagging image for Harbor...'
+                    sh "docker tag ${DOCKER_HUB_REPO}:latest ${HARBOR_IMAGE}:latest"
+                }
+            }
+        }
+
+        stage('Push to Harbor') {
+            steps {
+                script {
+                    echo '🚢 Pushing image to Harbor...'
+                    withCredentials([usernamePassword(credentialsId: HARBOR_CREDENTIALS_ID, usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                        sh """
+                        docker login -u $HARBOR_USER -p $HARBOR_PASS ${HARBOR_REGISTRY}
+                        docker push ${HARBOR_IMAGE}:latest
+                        docker logout ${HARBOR_REGISTRY}
+                        """
+                    }
+                }
+            }
+        }
     }
 
     post {
@@ -63,7 +95,7 @@ pipeline {
             script {
                 sh """
                 curl -H "Content-Type: application/json" \\
-                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER} pushed to Docker Hub."}' \\
+                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER} pushed to Docker Hub and Harbor."}' \\
                 $DISCORD_WEBHOOK
                 """
             }
@@ -83,5 +115,10 @@ pipeline {
                 """
             }
         }
+
+        always {
+            sh "docker rmi ${DOCKER_HUB_REPO}:latest || true"
+            sh "docker rmi ${HARBOR_IMAGE}:latest || true"
+        }
     }
-}   
+}
