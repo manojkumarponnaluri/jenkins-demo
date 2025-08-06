@@ -89,6 +89,18 @@ pipeline {
             }
         }
 
+        // ✅ NEW STAGE TO CREATE output.zip
+        stage('Prepare build artifact') {
+            steps {
+                echo '📦 Creating a dummy output.zip file...'
+                sh '''
+                    mkdir -p build
+                    echo "Hello from Jenkins" > build/file.txt
+                    zip -r build/output.zip build/
+                '''
+            }
+        }
+
         stage('Upload to MinIO') {
             steps {
                 script {
