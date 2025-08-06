@@ -90,7 +90,7 @@ pipeline {
         }
 
         // ✅ NEW STAGE TO CREATE output.zip
-        stage('Prepare build artifact') {
+        stage('Prepare build aircrafts') {
             steps {
                 echo '📦 Creating a dummy output.zip file...'
                 sh '''
