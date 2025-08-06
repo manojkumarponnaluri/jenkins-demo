@@ -16,8 +16,8 @@ pipeline {
 
         // 🔐 MinIO
         MINIO_CREDENTIALS_ID = 'minio-creds'
-        MINIO_HOST = '192.168.0.21' // ⬅️ Replace this with your RPi VM IP
-        MINIO_BUCKET = 'build-aircrafts'
+        MINIO_HOST = '192.168.0.21' // Raspberry Pi IP
+        MINIO_BUCKET = 'build-aircraft'
 
         // 🔔 Notifications
         DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')
@@ -89,8 +89,7 @@ pipeline {
             }
         }
 
-        // ✅ NEW STAGE TO CREATE output.zip
-        stage('Prepare build aircrafts') {
+        stage('Prepare Build Artifact') {
             steps {
                 echo '📦 Creating a dummy output.zip file...'
                 sh '''
@@ -152,3 +151,4 @@ pipeline {
         }
     }
 }
+
