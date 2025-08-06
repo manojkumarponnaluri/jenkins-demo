@@ -17,7 +17,7 @@ pipeline {
         // 🔐 MinIO
         MINIO_CREDENTIALS_ID = 'minio-creds'
         MINIO_HOST = '192.168.0.21' // ⬅️ Replace this with your RPi VM IP
-        MINIO_BUCKET = 'build-artifacts'
+        MINIO_BUCKET = 'build-aircrafts'
 
         // 🔔 Notifications
         DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')
