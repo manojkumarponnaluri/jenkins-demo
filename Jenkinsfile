@@ -14,6 +14,11 @@ pipeline {
         HARBOR_IMAGE = "${HARBOR_REGISTRY}/library/jenkins-demo"
         HARBOR_CREDENTIALS_ID = 'harbor-creds'
 
+        // 🔐 MinIO
+        MINIO_CREDENTIALS_ID = 'minio-creds'
+        MINIO_HOST = '192.168.0.21' // ⬅️ Replace this with your RPi VM IP
+        MINIO_BUCKET = 'build-artifacts'
+
         // 🔔 Notifications
         DISCORD_WEBHOOK = credentials('DISCORD_WEBHOOK')
     }
@@ -83,6 +88,19 @@ pipeline {
                 }
             }
         }
+
+        stage('Upload to MinIO') {
+            steps {
+                script {
+                    echo '🗃️ Uploading build output to MinIO...'
+                }
+                withCredentials([usernamePassword(credentialsId: MINIO_CREDENTIALS_ID, usernameVariable: 'MINIO_USER', passwordVariable: 'MINIO_PASS')]) {
+                    sh """
+                    curl -X PUT -T ./build/output.zip http://$MINIO_USER:$MINIO_PASS@${MINIO_HOST}:9000/${MINIO_BUCKET}/output.zip
+                    """
+                }
+            }
+        }
     }
 
     post {
@@ -95,7 +113,7 @@ pipeline {
             script {
                 sh """
                 curl -H "Content-Type: application/json" \\
-                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER} pushed to Docker Hub and Harbor."}' \\
+                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER} pushed to Docker Hub, Harbor, and uploaded to MinIO."}' \\
                 $DISCORD_WEBHOOK
                 """
             }
