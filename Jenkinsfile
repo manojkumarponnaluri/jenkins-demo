@@ -107,24 +107,23 @@ pipeline {
                 }
                 withCredentials([usernamePassword(credentialsId: MINIO_CREDENTIALS_ID, usernameVariable: 'MINIO_USER', passwordVariable: 'MINIO_PASS')]) {
                     sh """
-                    # Install mc if not already present
-                    if ! command -v mc >/dev/null; then
+                    # Install mc if not already present in workspace
+                    if [ ! -f ./mc ]; then
                         curl -O https://dl.min.io/client/mc/release/linux-amd64/mc
                         chmod +x mc
-                        mv mc /usr/local/bin/
                     fi
 
                     # Configure MinIO alias
-                    mc alias set myminio http://${MINIO_HOST}:9000 $MINIO_USER $MINIO_PASS
+                    ./mc alias set myminio http://${MINIO_HOST}:9000 $MINIO_USER $MINIO_PASS
 
                     # Create bucket if not exists
-                    mc mb myminio/${MINIO_BUCKET} || true
+                    ./mc mb myminio/${MINIO_BUCKET} || true
 
                     # Upload file
-                    mc cp ./build/output.zip myminio/${MINIO_BUCKET}/output.zip
+                    ./mc cp ./build/output.zip myminio/${MINIO_BUCKET}/output.zip
 
                     # Verify upload, fail if missing
-                    mc stat myminio/${MINIO_BUCKET}/output.zip || exit 1
+                    ./mc stat myminio/${MINIO_BUCKET}/output.zip || exit 1
                     """
                 }
             }
