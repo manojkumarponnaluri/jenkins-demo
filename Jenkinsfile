@@ -107,7 +107,24 @@ pipeline {
                 }
                 withCredentials([usernamePassword(credentialsId: MINIO_CREDENTIALS_ID, usernameVariable: 'MINIO_USER', passwordVariable: 'MINIO_PASS')]) {
                     sh """
-                    curl -X PUT -T ./build/output.zip http://$MINIO_USER:$MINIO_PASS@${MINIO_HOST}:9000/${MINIO_BUCKET}/output.zip
+                    # Install mc if not already present
+                    if ! command -v mc >/dev/null; then
+                        curl -O https://dl.min.io/client/mc/release/linux-amd64/mc
+                        chmod +x mc
+                        mv mc /usr/local/bin/
+                    fi
+
+                    # Configure MinIO alias
+                    mc alias set myminio http://${MINIO_HOST}:9000 $MINIO_USER $MINIO_PASS
+
+                    # Create bucket if not exists
+                    mc mb myminio/${MINIO_BUCKET} || true
+
+                    # Upload file
+                    mc cp ./build/output.zip myminio/${MINIO_BUCKET}/output.zip
+
+                    # Verify upload, fail if missing
+                    mc stat myminio/${MINIO_BUCKET}/output.zip || exit 1
                     """
                 }
             }
@@ -123,8 +140,8 @@ pipeline {
             )
             script {
                 sh """
-                curl -H "Content-Type: application/json" \\
-                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER} pushed to Docker Hub, Harbor, and uploaded to MinIO."}' \\
+                curl -H "Content-Type: application/json" \
+                -X POST -d '{"content": "✅ Jenkins Job *SUCCESS*: ${env.JOB_NAME} #${env.BUILD_NUMBER} pushed to Docker Hub, Harbor, and uploaded to MinIO."}' \
                 $DISCORD_WEBHOOK
                 """
             }
@@ -138,8 +155,8 @@ pipeline {
             )
             script {
                 sh """
-                curl -H "Content-Type: application/json" \\
-                -X POST -d '{"content": "❌ Jenkins Job *FAILED*: ${env.JOB_NAME} #${env.BUILD_NUMBER}"}' \\
+                curl -H "Content-Type: application/json" \
+                -X POST -d '{"content": "❌ Jenkins Job *FAILED*: ${env.JOB_NAME} #${env.BUILD_NUMBER}"}' \
                 $DISCORD_WEBHOOK
                 """
             }
@@ -151,4 +168,3 @@ pipeline {
         }
     }
 }
-
