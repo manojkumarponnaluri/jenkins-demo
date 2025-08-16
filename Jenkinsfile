@@ -10,7 +10,7 @@ pipeline {
         DOCKER_HUB_REPO = '7995360438/jenkins-demo'
 
         // 🌐 Harbor Registry
-        HARBOR_REGISTRY = '192.168.0.13:8080'
+        HARBOR_REGISTRY = '192.168.0.16:8080'
         HARBOR_IMAGE = "${HARBOR_REGISTRY}/library/jenkins-demo"
         HARBOR_CREDENTIALS_ID = 'harbor-creds'
 
